@@ -6,6 +6,7 @@ interface ChatStore {
   sessions: ChatSession[]
   currentSessionId: string | null
   isGenerating: boolean
+  useSpecialPrompt: boolean
   
   // Actions
   setCurrentSessionId: (id: string) => void
@@ -14,16 +15,33 @@ interface ChatStore {
   updateSessionTitle: (id: string, title: string) => void
   deleteSession: (id: string) => void
   setIsGenerating: (isGenerating: boolean) => void
+  setUseSpecialPrompt: (useSpecialPrompt: boolean) => void
   getCurrentSession: () => ChatSession | undefined
   getCurrentMessages: () => Message[]
 }
 
 // Helper to ensure dates are valid Date objects
 const ensureDateObject = (date: Date | string): Date => {
-  if (date instanceof Date) {
-    return date;
+  try {
+    if (date instanceof Date) {
+      // Check if the Date object is valid
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    
+    // Try to parse the string into a Date
+    const parsedDate = new Date(date);
+    
+    // Check if the parsed date is valid
+    if (isNaN(parsedDate.getTime())) {
+      console.warn('Invalid date string provided:', date);
+      return new Date(); // Return current date as fallback
+    }
+    
+    return parsedDate;
+  } catch (error) {
+    console.error('Error converting to Date object:', error);
+    return new Date(); // Return current date on any error
   }
-  return new Date(date);
 };
 
 export const useChatStore = create<ChatStore>()(
@@ -44,6 +62,7 @@ export const useChatStore = create<ChatStore>()(
         sessions: [],
         currentSessionId: null,
         isGenerating: false,
+        useSpecialPrompt: true,
 
         setCurrentSessionId: (id) => set({ currentSessionId: id }),
 
@@ -112,6 +131,8 @@ export const useChatStore = create<ChatStore>()(
           }),
 
         setIsGenerating: (isGenerating) => set({ isGenerating }),
+
+        setUseSpecialPrompt: (useSpecialPrompt) => set({ useSpecialPrompt }),
 
         getCurrentSession: () => {
           const { sessions, currentSessionId } = get()

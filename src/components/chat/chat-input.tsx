@@ -13,7 +13,14 @@ export function ChatInput() {
   const [userInput, setUserInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const { addMessage, isGenerating, setIsGenerating, getCurrentMessages, getCurrentSession } = useChatStore()
+  const { 
+    addMessage, 
+    isGenerating, 
+    setIsGenerating, 
+    getCurrentMessages, 
+    getCurrentSession,
+    useSpecialPrompt 
+  } = useChatStore()
 
   // Adjust textarea height based on content
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -79,7 +86,7 @@ export function ChatInput() {
         assistantMessage.content += chunk
         // Update the message with the same ID to avoid duplicates
         addMessage(assistantMessage)
-      })
+      }, useSpecialPrompt)
     } catch (error) {
       console.error('Error generating response:', error)
       
@@ -131,7 +138,7 @@ export function ChatInput() {
           value={userInput}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
+          placeholder={useSpecialPrompt ? "Type a message... (Using College Counselor)" : "Type a message..."}
           className="min-h-[60px] resize-none border-gray-200 focus-visible:ring-1 focus-visible:ring-offset-1"
           disabled={isGenerating}
         />

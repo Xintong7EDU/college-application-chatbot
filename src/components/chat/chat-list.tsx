@@ -9,12 +9,28 @@ import { Button } from '@/components/ui/button'
 
 export function ChatList() {
   const { getCurrentMessages, isGenerating } = useChatStore()
-  const messages = getCurrentMessages()
+  const messages = getCurrentMessages().sort((a, b) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    
+    // Handle invalid dates (NaN) by placing them at the end
+    if (isNaN(dateA)) return 1;
+    if (isNaN(dateB)) return -1;
+    
+    return dateA - dateB;
+  });
   const endOfMessagesRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const prevGeneratingRef = useRef(isGenerating)
   const prevMessagesLengthRef = useRef(messages.length)
+  const [isClient, setIsClient] = useState(false)
+  
+  // Set isClient to true after component mounts
+  useEffect(() => {
+    setIsClient(true)
+    console.log('ChatList mounted, isClient set to true')
+  }, [])
 
   // Only scroll to bottom when generation completes (transitions from true to false)
   useEffect(() => {
@@ -73,43 +89,43 @@ export function ChatList() {
     }
   }
 
-  // Display welcome message if no messages
-  if (messages.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-2xl font-bold mb-2">Welcome to GPT-4o Chat</h2>
-        <p className="text-muted-foreground mb-8 max-w-md">
-          Start a conversation with GPT-4o, one of OpenAI&apos;s most advanced language models.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-          {examplePrompts.map((prompt, index) => (
-            <div 
-              key={index}
-              className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
-              onClick={() => {
-                // TODO: Implement clicking on example prompts
-              }}
-            >
-              <p className="text-sm">{prompt}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
+  // Use a single container for both states to avoid hydration mismatch
   return (
     <div className="flex-1 overflow-y-auto p-4 relative" ref={containerRef}>
-      {messages.map((message: Message) => (
-        <ChatMessage key={message.id} message={message} />
-      ))}
-      
-      {/* Show typing indicator when generating response */}
-      {isGenerating && (
-        <div className="flex items-center justify-start p-4">
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          <span className="text-sm text-muted-foreground">GPT-4o is thinking...</span>
+      {isClient && messages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full text-center">
+          <h2 className="text-2xl font-bold mb-2">Welcome to GPT-4o Chat</h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            Start a conversation with GPT-4o, one of OpenAI&apos;s most advanced language models.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+            {examplePrompts.map((prompt, index) => (
+              <div 
+                key={index}
+                className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
+                onClick={() => {
+                  // TODO: Implement clicking on example prompts
+                }}
+              >
+                <p className="text-sm">{prompt}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      ) : (
+        <>
+          {messages.map((message: Message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+          
+          {/* Show typing indicator when generating response */}
+          {isGenerating && (
+            <div className="flex items-center justify-start p-4">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-sm text-muted-foreground">GPT-4o is thinking...</span>
+            </div>
+          )}
+        </>
       )}
       
       {/* Scroll anchor */}

@@ -7,20 +7,26 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(date: Date | string) {
-  // Handle both Date objects and string dates
-  const dateObj = date instanceof Date ? date : new Date(date)
-  
-  // Check if date is valid before formatting
-  if (isNaN(dateObj.getTime())) {
-    return 'Invalid date'
+  try {
+    // Handle both Date objects and string dates
+    const dateObj = date instanceof Date ? date : new Date(date)
+    
+    // Check if date is valid before formatting
+    if (isNaN(dateObj.getTime())) {
+      console.warn('Invalid date provided to formatDate:', date)
+      return 'Just now'
+    }
+    
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    }).format(dateObj)
+  } catch (error) {
+    console.error('Error formatting date:', error)
+    return 'Just now'
   }
-  
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-  }).format(dateObj)
 }
 
 export function formatMessageToOpenAI(messages: Message[]) {
@@ -30,7 +36,7 @@ export function formatMessageToOpenAI(messages: Message[]) {
   }))
 }
 
-export async function streamOpenAIResponse(messages: Message[], onChunk: (chunk: string) => void) {
+export async function streamOpenAIResponse(messages: Message[], onChunk: (chunk: string) => void, useSpecialPrompt: boolean = true) {
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -39,6 +45,7 @@ export async function streamOpenAIResponse(messages: Message[], onChunk: (chunk:
       },
       body: JSON.stringify({
         messages: formatMessageToOpenAI(messages),
+        useSpecialPrompt,
       }),
     })
 

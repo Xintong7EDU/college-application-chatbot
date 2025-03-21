@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Message } from '@/lib/types'
 import { MarkdownRenderer } from './markdown-renderer'
 import { formatDate, getMessageRole } from '@/lib/utils'
@@ -13,9 +13,18 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isAssistant = message.role === 'assistant'
+  const [formattedDate, setFormattedDate] = useState<string>('')
+  const [isClient, setIsClient] = useState(false)
   
   // Ensure createdAt is a Date object
   const createdAt = typeof message.createdAt === 'string' ? new Date(message.createdAt) : message.createdAt;
+
+  // Format the date on the client side only
+  useEffect(() => {
+    setIsClient(true)
+    setFormattedDate(formatDate(createdAt))
+    console.log('ChatMessage mounted, date formatted on client')
+  }, [createdAt])
 
   return (
     <div className={cn(
@@ -29,10 +38,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{getMessageRole(message.role)}</span>
-          <span>•</span>
-          <time dateTime={createdAt.toISOString()}>
-            {formatDate(createdAt)}
-          </time>
+          {isClient && (
+            <>
+              <span>•</span>
+              <time dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
+                ? createdAt.toISOString() 
+                : new Date().toISOString()}>
+                {formattedDate}
+              </time>
+            </>
+          )}
         </div>
         
         <Card className={cn(
