@@ -12,56 +12,7 @@ const getOpenAIClient = () => {
   return new OpenAI({ apiKey });
 };
 
-export const runtime = 'edge'
-
-// Helper function to transform the OpenAI stream into a ReadableStream
-function createReadableStream(response: AsyncIterable<ChatCompletionChunk>) {
-  return new ReadableStream({
-    async start(controller) {
-      try {
-        // Process each chunk from the OpenAI response
-        for await (const chunk of response) {
-          const text = chunk.choices[0]?.delta?.content || '';
-          if (text) {
-            controller.enqueue(new TextEncoder().encode(text));
-          }
-        }
-        controller.close();
-      } catch (error) {
-        console.error('Error processing stream:', error);
-        controller.error(error);
-      }
-    },
-  });
-}
-
-export async function POST(req: Request) {
-  try {
-    // Validate request format
-    let messages;
-    try {
-      const body = await req.json();
-      messages = body.messages;
-    } catch {
-      // Ignore the specific error - just return a 400
-      return new Response('Invalid JSON body', { status: 400 });
-    }
-
-    if (!messages || !Array.isArray(messages)) {
-      return new Response('Messages are required and must be an array', { status: 400 });
-    }
-
-    try {
-      // Get OpenAI client (will throw if API key is missing)
-      const openai = getOpenAIClient();
-      
-      // Create the streaming response from OpenAI
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `# Personalized College Counselor System Prompt
+const PROMPT = `# Personalized College Counselor System Prompt
 
 You are a Personalized College Counselor, designed to guide high school students through college selection and application in a conversational, mentor-like manner. Your approach should mirror the natural back-and-forth seen in real advising sessions, focusing on building rapport while providing practical guidance with a direct, sometimes challenging style that pushes students to think deeper about their choices.
 
@@ -196,7 +147,58 @@ Your responses should flow naturally like a conversation, with a somewhat direct
    - Suggest meetings with specific people: "Talk to Vivian about that"
    - Propose follow-up discussions: "Let's continue the conversation after you dig into more information"
 
-Always balance challenging students with supporting them. Push them beyond their comfort zone while respecting their ultimate preferences. Remember to share specific stories about past students that demonstrate the unpredictability of admissions and the importance of following one's heart.`,
+Always balance challenging students with supporting them. Push them beyond their comfort zone while respecting their ultimate preferences. Remember to share specific stories about past students that demonstrate the unpredictability of admissions and the importance of following one's heart.`
+
+export const runtime = 'edge'
+
+// Helper function to transform the OpenAI stream into a ReadableStream
+function createReadableStream(response: AsyncIterable<ChatCompletionChunk>) {
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        // Process each chunk from the OpenAI response
+        for await (const chunk of response) {
+          const text = chunk.choices[0]?.delta?.content || '';
+          if (text) {
+            controller.enqueue(new TextEncoder().encode(text));
+          }
+        }
+        controller.close();
+      } catch (error) {
+        console.error('Error processing stream:', error);
+        controller.error(error);
+      }
+    },
+  });
+}
+
+export async function POST(req: Request) {
+  try {
+    // Validate request format
+    let messages;
+    try {
+      const body = await req.json();
+      messages = body.messages;
+    } catch {
+      // Ignore the specific error - just return a 400
+      return new Response('Invalid JSON body', { status: 400 });
+    }
+
+    if (!messages || !Array.isArray(messages)) {
+      return new Response('Messages are required and must be an array', { status: 400 });
+    }
+
+    try {
+      // Get OpenAI client (will throw if API key is missing)
+      const openai = getOpenAIClient();
+      
+      // Create the streaming response from OpenAI
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: PROMPT,
           },
           ...messages,
         ],
