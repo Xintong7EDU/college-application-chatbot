@@ -1,14 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, ReactNode } from 'react'
 import { useChat } from 'ai/react'
 import { Message } from 'ai'
-
-// Example messages to guide the model's style
-const EXAMPLE_MESSAGES: Message[] = [
-  { id: 'ex1', role: 'user', content: "I'm worried about my course load for next semester with all my AP classes." },
-  { id: 'ex2', role: 'assistant', content: "Yeah, I can see why that's concerning. Do you know if your teachers will give you mock tests to help prepare for the AP exams?" },
-  { id: 'ex3', role: 'user', content: "For calculus we'll finish everything before spring break and then have about 4 weeks for review." },
-  { id: 'ex4', role: 'assistant', content: "Okay, so you're gonna do three to four weeks of review. That sounds good. What about your other AP courses?" },
-]
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import type { Components } from 'react-markdown'
 
 export interface UseOpenAIChatOptions {
   /** API endpoint for chat */
@@ -21,6 +16,14 @@ export interface UseOpenAIChatOptions {
   onError?: (error: Error) => void;
   /** Callback on message completion */
   onMessageComplete?: (message: Message) => void;
+}
+
+interface MarkdownProps {
+  children: ReactNode;
+}
+
+interface CodeProps extends MarkdownProps {
+  inline?: boolean;
 }
 
 export function useOpenAIChat({
@@ -121,6 +124,34 @@ export function useOpenAIChat({
     [handleSubmit, messages]
   )
 
+  // Process markdown in messages
+  const markdownComponents: Partial<Components> = {
+    p: ({children}) => <p className="mb-4">{children}</p>,
+    h1: ({children}) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+    h2: ({children}) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+    ul: ({children}) => <ul className="list-disc ml-6 mb-4">{children}</ul>,
+    ol: ({children}) => <ol className="list-decimal ml-6 mb-4">{children}</ol>,
+    li: ({children}) => <li className="mb-2">{children}</li>,
+    strong: ({children}) => <strong className="font-bold">{children}</strong>,
+    em: ({children}) => <em className="italic">{children}</em>,
+    code: ({node, inline, ...props}) => 
+      inline ? 
+        <code className="bg-gray-100 rounded px-1" {...props} /> :
+        <code className="block bg-gray-100 p-4 rounded mb-4" {...props} />
+  }
+
+  const processedMessages = messages.map(message => ({
+    ...message,
+    content: message.role === 'assistant' && typeof message.content === 'string' ? 
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        components={markdownComponents}
+      >
+        {message.content}
+      </ReactMarkdown> 
+      : message.content
+  }))
+
   // Enhanced append method with timing
   const enhancedAppend = useCallback(
     (...props: Parameters<typeof append>) => {
@@ -139,7 +170,8 @@ export function useOpenAIChat({
   }, [setMessages])
 
   return {
-    messages,
+    messages: processedMessages,
+    rawMessages: messages,
     input,
     handleInputChange,
     handleSubmit: enhancedSubmit,
