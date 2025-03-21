@@ -14,6 +14,9 @@ interface ChatMessageProps {
 export function ChatMessage({ message }: ChatMessageProps) {
   const isAssistant = message.role === 'assistant'
   
+  // Ensure createdAt is a Date object
+  const createdAt = typeof message.createdAt === 'string' ? new Date(message.createdAt) : message.createdAt;
+
   return (
     <div className={cn(
       'flex w-full items-start gap-4 py-4',
@@ -27,8 +30,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{getMessageRole(message.role)}</span>
           <span>•</span>
-          <time dateTime={message.createdAt.toISOString()}>
-            {formatDate(message.createdAt)}
+          <time dateTime={createdAt.toISOString()}>
+            {formatDate(createdAt)}
           </time>
         </div>
         
