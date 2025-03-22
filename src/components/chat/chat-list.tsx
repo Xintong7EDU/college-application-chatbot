@@ -6,6 +6,7 @@ import { ChatMessage } from './chat-message'
 import { useChatStore } from '@/lib/store'
 import { Loader2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function ChatList() {
   const { getCurrentMessages, isGenerating } = useChatStore()
@@ -29,7 +30,6 @@ export function ChatList() {
   // Set isClient to true after component mounts
   useEffect(() => {
     setIsClient(true)
-    console.log('ChatList mounted, isClient set to true')
   }, [])
 
   // Only scroll to bottom when generation completes (transitions from true to false)
@@ -89,60 +89,68 @@ export function ChatList() {
     }
   }
 
-  // Use a single container for both states to avoid hydration mismatch
+  // Use CSS to handle showing/hiding elements instead of conditional rendering
   return (
-    <div className="flex-1 overflow-y-auto p-4 relative" ref={containerRef}>
-      {isClient && messages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full text-center">
-          <h2 className="text-2xl font-bold mb-2">Welcome to GPT-4o Chat</h2>
-          <p className="text-muted-foreground mb-8 max-w-md">
-            Start a conversation with GPT-4o, one of OpenAI&apos;s most advanced language models.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-            {examplePrompts.map((prompt, index) => (
-              <div 
-                key={index}
-                className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
-                onClick={() => {
-                  // TODO: Implement clicking on example prompts
-                }}
-              >
-                <p className="text-sm">{prompt}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <>
-          {messages.map((message: Message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
-          
-          {/* Show typing indicator when generating response */}
-          {isGenerating && (
-            <div className="flex items-center justify-start p-4">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              <span className="text-sm text-muted-foreground">GPT-4o is thinking...</span>
+    <div className="flex-1 overflow-y-auto p-4 relative flex flex-col" ref={containerRef}>
+      {/* Welcome section - hidden by default, shown when client-side and no messages */}
+      <div className={cn(
+        "flex flex-col items-center justify-center min-h-[80vh] text-center",
+        isClient && messages.length === 0 ? "flex" : "hidden"
+      )}>
+        <h2 className="text-2xl font-bold mb-2">Welcome to GPT-4o Chat</h2>
+        <p className="text-muted-foreground mb-8 max-w-md">
+          Start a conversation with GPT-4o, one of OpenAI&apos;s most advanced language models.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+          {examplePrompts.map((prompt, index) => (
+            <div 
+              key={index}
+              className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
+              onClick={() => {
+                // TODO: Implement clicking on example prompts
+              }}
+            >
+              <p className="text-sm">{prompt}</p>
             </div>
-          )}
-        </>
-      )}
+          ))}
+        </div>
+      </div>
+      
+      {/* Message list - visible when there are messages */}
+      <div className={cn(
+        "flex-1",
+        isClient && messages.length === 0 ? "hidden" : "block"
+      )}>
+        {messages.map((message: Message) => (
+          <ChatMessage key={message.id} message={message} />
+        ))}
+      </div>
+        
+      {/* Typing indicator - hidden by default, shown when generating */}
+      <div className={cn(
+        "flex items-center justify-start p-4",
+        isGenerating ? "block" : "hidden"
+      )}>
+        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        <span className="text-sm text-muted-foreground">GPT-4o is thinking...</span>
+      </div>
       
       {/* Scroll anchor */}
       <div ref={endOfMessagesRef} />
 
       {/* Scroll to bottom button */}
-      {showScrollButton && (
-        <Button
-          variant="outline"
-          size="icon"
-          className="fixed bottom-24 right-8 rounded-full shadow-md hover:shadow-lg transition-all"
-          onClick={scrollToBottom}
-          aria-label="Scroll to bottom"
-        >
-          <ChevronDown className="h-4 w-4" />
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="icon"
+        className={cn(
+          "fixed bottom-24 right-8 rounded-full shadow-md hover:shadow-lg transition-all",
+          showScrollButton ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={scrollToBottom}
+        aria-label="Scroll to bottom"
+      >
+        <ChevronDown className="h-4 w-4" />
+      </Button>
     </div>
   )
 }

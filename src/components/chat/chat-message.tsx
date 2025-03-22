@@ -23,31 +23,36 @@ export function ChatMessage({ message }: ChatMessageProps) {
   useEffect(() => {
     setIsClient(true)
     setFormattedDate(formatDate(createdAt))
-    console.log('ChatMessage mounted, date formatted on client')
   }, [createdAt])
 
+  // The main container div className must be the same on both server and client
+  // to avoid hydration mismatch
+  const containerClassName = cn(
+    'flex w-full items-start gap-4 py-4',
+    isAssistant ? 'justify-start' : 'justify-end'
+  )
+
+  const messageContainerClassName = cn(
+    'flex flex-col gap-2',
+    isAssistant ? 'items-start' : 'items-end',
+    'max-w-3xl'
+  )
+
   return (
-    <div className={cn(
-      'flex w-full items-start gap-4 py-4',
-      isAssistant ? 'justify-start' : 'justify-end'
-    )}>
-      <div className={cn(
-        'flex flex-col gap-2',
-        isAssistant ? 'items-start' : 'items-end',
-        'max-w-3xl'
-      )}>
+    <div className={containerClassName}>
+      <div className={messageContainerClassName}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{getMessageRole(message.role)}</span>
-          {isClient && (
-            <>
-              <span>•</span>
-              <time dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
-                ? createdAt.toISOString() 
-                : new Date().toISOString()}>
-                {formattedDate}
-              </time>
-            </>
-          )}
+          {/* This content is hidden until client-side hydration is complete */}
+          <span className={isClient ? "inline" : "hidden"}>•</span>
+          <time 
+            dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
+              ? createdAt.toISOString() 
+              : new Date().toISOString()}
+            className={isClient ? "inline" : "hidden"}
+          >
+            {formattedDate}
+          </time>
         </div>
         
         <Card className={cn(
