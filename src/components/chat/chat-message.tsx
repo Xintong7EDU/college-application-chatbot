@@ -7,6 +7,17 @@ import { formatDate, getMessageRole } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { PlayVoiceButton } from '@/components/ui/play-voice-button'
+import { VoiceSettingsPanel } from '@/components/ui/voice-settings'
+import { VoiceSettings } from '@/lib/tts'
+
+// Default voice settings
+const defaultVoiceSettings: VoiceSettings = {
+  stability: 0.5,
+  similarity_boost: 0.75,
+  style: 0,
+  speed: 1.0,
+  use_speaker_boost: true
+};
 
 interface ChatMessageProps {
   message: Message
@@ -16,6 +27,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const isAssistant = message.role === 'assistant'
   const [formattedDate, setFormattedDate] = useState<string>('')
   const [isClient, setIsClient] = useState(false)
+  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(defaultVoiceSettings)
+  const [voiceId, setVoiceId] = useState<string>('EXAVITQu4vr4xnSDxMaL') // Default to Cassidy voice
+  const [modelId, setModelId] = useState<string>('eleven_multilingual_v2') // Default to Flash v2.5
   
   // Ensure createdAt is a Date object
   const createdAt = typeof message.createdAt === 'string' ? new Date(message.createdAt) : message.createdAt;
@@ -56,12 +70,24 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 {formattedDate}
               </time>
               
-              {/* Play voice button only for assistant messages */}
+              {/* Voice controls only for assistant messages */}
               {isAssistant && (
-                <PlayVoiceButton 
-                  text={message.content} 
-                  className="ml-1"
-                />
+                <div className="flex items-center gap-1 ml-1">
+                  <PlayVoiceButton 
+                    text={message.content}
+                    voiceId={voiceId}
+                    modelId={modelId}
+                    voiceSettings={voiceSettings}
+                  />
+                  <VoiceSettingsPanel 
+                    voiceSettings={voiceSettings}
+                    onChange={setVoiceSettings}
+                    onVoiceChange={setVoiceId}
+                    onModelChange={setModelId}
+                    defaultVoiceId={voiceId}
+                    defaultModelId={modelId}
+                  />
+                </div>
               )}
             </>
           )}

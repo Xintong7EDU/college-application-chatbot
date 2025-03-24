@@ -1,18 +1,42 @@
 "use client"
 
 import { useState, useCallback } from 'react'
-import { Headphones, AlertCircle } from 'lucide-react'
+import { Headphones, AlertCircle, Settings } from 'lucide-react'
 import { Button } from './button'
 import { AudioPlayer } from './audio-player'
-import { textToSpeech } from '@/lib/tts'
+import { textToSpeech, TTSOptions, VoiceSettings } from '@/lib/tts'
 import { toast } from 'sonner'
+
+// Default voice settings based on Eleven Labs UI
+const defaultVoiceSettings: VoiceSettings = {
+  stability: 0.5,     // Middle of the slider
+  similarity_boost: 0.75, // Higher similarity (right side of slider)
+  style: 0.0,         // Default style value
+  speed: 1.0,         // Default speed
+  use_speaker_boost: true
+};
+
+// Default voice ID for "Cassidy" voice (replace with actual ID if known)
+const DEFAULT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
+
+// Default model ID for "Eleven Flash v2.5"
+const DEFAULT_MODEL_ID = 'eleven_multilingual_v2';
 
 interface PlayVoiceButtonProps {
   text: string
   className?: string
+  voiceId?: string
+  modelId?: string
+  voiceSettings?: Partial<VoiceSettings>
 }
 
-export function PlayVoiceButton({ text, className }: PlayVoiceButtonProps) {
+export function PlayVoiceButton({ 
+  text, 
+  className,
+  voiceId = DEFAULT_VOICE_ID,
+  modelId = DEFAULT_MODEL_ID,
+  voiceSettings = defaultVoiceSettings
+}: PlayVoiceButtonProps) {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -31,7 +55,15 @@ export function PlayVoiceButton({ text, className }: PlayVoiceButtonProps) {
       setHasError(false)
       
       console.log('Generating voice for text:', text.substring(0, 50) + '...');
-      const blob = await textToSpeech(text)
+      
+      // Configure TTS options
+      const ttsOptions: TTSOptions = {
+        voiceId,
+        modelId,
+        voiceSettings
+      };
+      
+      const blob = await textToSpeech(text, ttsOptions)
       
       if (blob) {
         setAudioBlob(blob)
@@ -48,7 +80,7 @@ export function PlayVoiceButton({ text, className }: PlayVoiceButtonProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [text, audioBlob])
+  }, [text, audioBlob, voiceId, modelId, voiceSettings])
   
   // If there was an error but the user clicks again, retry
   const handleClick = () => {
