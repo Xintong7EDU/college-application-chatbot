@@ -6,6 +6,7 @@ import { MarkdownRenderer } from './markdown-renderer'
 import { formatDate, getMessageRole } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { PlayVoiceButton } from '@/components/ui/play-voice-button'
 
 interface ChatMessageProps {
   message: Message
@@ -44,15 +45,26 @@ export function ChatMessage({ message }: ChatMessageProps) {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{getMessageRole(message.role)}</span>
           {/* This content is hidden until client-side hydration is complete */}
-          <span className={isClient ? "inline" : "hidden"}>•</span>
-          <time 
-            dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
-              ? createdAt.toISOString() 
-              : new Date().toISOString()}
-            className={isClient ? "inline" : "hidden"}
-          >
-            {formattedDate}
-          </time>
+          {isClient && (
+            <>
+              <span>•</span>
+              <time 
+                dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
+                  ? createdAt.toISOString() 
+                  : new Date().toISOString()}
+              >
+                {formattedDate}
+              </time>
+              
+              {/* Play voice button only for assistant messages */}
+              {isAssistant && (
+                <PlayVoiceButton 
+                  text={message.content} 
+                  className="ml-1"
+                />
+              )}
+            </>
+          )}
         </div>
         
         <Card className={cn(
