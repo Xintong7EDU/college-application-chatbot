@@ -81,12 +81,37 @@ export function ChatInput() {
       // since we'll be adding content to it incrementally
       messages.pop()
       
-      await streamOpenAIResponse(messages, (chunk) => {
-        // Update the assistant message with each chunk
-        assistantMessage.content += chunk
-        // Update the message with the same ID to avoid duplicates
-        addMessage(assistantMessage)
-      }, useSpecialPrompt)
+      try {
+        await streamOpenAIResponse(messages, (chunk) => {
+          // Update the assistant message with each chunk
+          assistantMessage.content += chunk
+          // Update the message with the same ID to avoid duplicates
+          addMessage(assistantMessage)
+        }, useSpecialPrompt)
+      } catch (streamError) {
+        console.error('Stream error:', streamError);
+        
+        // Check if it's a message channel closed error
+        const errorMessage = streamError instanceof Error ? streamError.message : String(streamError);
+        
+        if (errorMessage.includes('message channel closed')) {
+          // Handle message channel closed error specifically
+          console.log('Message channel closed prematurely, but we may have a partial response');
+          
+          // If we have a partial response with some content, we can still use it
+          if (assistantMessage.content.trim().length > 0) {
+            console.log('Using partial response:', assistantMessage.content.length, 'characters');
+            addMessage({
+              ...assistantMessage,
+              content: assistantMessage.content + '\n\n*Note: The response was cut short due to a connection issue.*'
+            });
+            return; // Exit without showing error
+          }
+        }
+        
+        // Re-throw for the outer catch block to handle
+        throw streamError;
+      }
     } catch (error) {
       console.error('Error generating response:', error)
       

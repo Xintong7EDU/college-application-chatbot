@@ -6,7 +6,7 @@ import { ChatMessage } from './chat-message'
 import { useChatStore } from '@/lib/store'
 import { Loader2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, clientOnly } from '@/lib/utils'
 
 export function ChatList() {
   const { getCurrentMessages, isGenerating } = useChatStore()
@@ -30,10 +30,13 @@ export function ChatList() {
   // Set isClient to true after component mounts
   useEffect(() => {
     setIsClient(true)
-  }, [])
+    console.log('ChatList client-side hydration complete', messages.length)
+  }, [messages.length])
 
   // Only scroll to bottom when generation completes (transitions from true to false)
   useEffect(() => {
+    if (!isClient) return; // Skip if not client-side yet
+    
     // Check if we just finished generating (from true to false)
     if (prevGeneratingRef.current && !isGenerating) {
       if (endOfMessagesRef.current) {
@@ -43,10 +46,12 @@ export function ChatList() {
     
     // Update the ref for next check
     prevGeneratingRef.current = isGenerating
-  }, [isGenerating])
+  }, [isGenerating, isClient])
 
   // Scroll to bottom when a new user message is added
   useEffect(() => {
+    if (!isClient) return; // Skip if not client-side yet
+    
     const messagesIncreased = messages.length > prevMessagesLengthRef.current;
     prevMessagesLengthRef.current = messages.length;
     
@@ -56,10 +61,12 @@ export function ChatList() {
         endOfMessagesRef.current.scrollIntoView({ behavior: 'smooth' })
       }
     }
-  }, [messages.length, messages]);
+  }, [messages.length, messages, isClient]);
 
   // Monitor scroll position to show/hide scroll button
   useEffect(() => {
+    if (!isClient) return; // Skip if not client-side yet
+    
     const container = containerRef.current
     if (!container) return
 
@@ -81,7 +88,7 @@ export function ChatList() {
       container.removeEventListener('scroll', checkScrollPosition)
       window.removeEventListener('resize', checkScrollPosition)
     }
-  }, [messages.length])
+  }, [messages.length, isClient])
 
   const scrollToBottom = () => {
     if (endOfMessagesRef.current) {
@@ -93,7 +100,7 @@ export function ChatList() {
   return (
     <div className="flex-1 overflow-y-auto p-4 relative flex flex-col" ref={containerRef}>
       {/* Welcome section - hidden by default, shown when client-side and no messages */}
-      <div className={cn(
+      <div className={clientOnly(
         "flex flex-col items-center justify-center min-h-[80vh] text-center",
         isClient && messages.length === 0 ? "flex" : "hidden"
       )}>
@@ -117,7 +124,7 @@ export function ChatList() {
       </div>
       
       {/* Message list - visible when there are messages */}
-      <div className={cn(
+      <div className={clientOnly(
         "flex-1",
         isClient && messages.length === 0 ? "hidden" : "block"
       )}>
@@ -127,7 +134,7 @@ export function ChatList() {
       </div>
         
       {/* Typing indicator - hidden by default, shown when generating */}
-      <div className={cn(
+      <div className={clientOnly(
         "flex items-center justify-start p-4",
         isGenerating ? "block" : "hidden"
       )}>
@@ -142,7 +149,7 @@ export function ChatList() {
       <Button
         variant="outline"
         size="icon"
-        className={cn(
+        className={clientOnly(
           "fixed bottom-24 right-8 rounded-full shadow-md hover:shadow-lg transition-all",
           showScrollButton ? "opacity-100" : "opacity-0 pointer-events-none"
         )}

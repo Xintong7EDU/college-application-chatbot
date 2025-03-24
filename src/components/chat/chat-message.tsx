@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Message } from '@/lib/types'
 import { MarkdownRenderer } from './markdown-renderer'
-import { formatDate, getMessageRole } from '@/lib/utils'
+import { formatDate, getMessageRole, clientOnly } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { PlayVoiceButton } from '@/components/ui/play-voice-button'
@@ -38,7 +38,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
   useEffect(() => {
     setIsClient(true)
     setFormattedDate(formatDate(createdAt))
-  }, [createdAt])
+    console.log('ChatMessage client-side hydration complete', message.id)
+  }, [createdAt, message.id])
 
   // The main container div className must be the same on both server and client
   // to avoid hydration mismatch
@@ -58,38 +59,35 @@ export function ChatMessage({ message }: ChatMessageProps) {
       <div className={messageContainerClassName}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{getMessageRole(message.role)}</span>
-          {/* This content is hidden until client-side hydration is complete */}
-          {isClient && (
-            <>
-              <span>•</span>
-              <time 
-                dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
-                  ? createdAt.toISOString() 
-                  : new Date().toISOString()}
-              >
-                {formattedDate}
-              </time>
-              
-              {/* Voice controls only for assistant messages */}
-              {isAssistant && (
-                <div className="flex items-center gap-1 ml-1">
-                  <PlayVoiceButton 
-                    text={message.content}
-                    voiceId={voiceId}
-                    modelId={modelId}
-                    voiceSettings={voiceSettings}
-                  />
-                  <VoiceSettingsPanel 
-                    voiceSettings={voiceSettings}
-                    onChange={setVoiceSettings}
-                    onVoiceChange={setVoiceId}
-                    onModelChange={setModelId}
-                    defaultVoiceId={voiceId}
-                    defaultModelId={modelId}
-                  />
-                </div>
-              )}
-            </>
+          {/* Use clientOnly to handle conditional content safely */}
+          <span className={clientOnly("", isClient ? "inline" : "hidden")}>•</span>
+          <time 
+            dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
+              ? createdAt.toISOString() 
+              : new Date().toISOString()}
+            className={clientOnly("", isClient ? "inline" : "hidden")}
+          >
+            {formattedDate}
+          </time>
+          
+          {/* Voice controls only for assistant messages */}
+          {isAssistant && (
+            <div className={clientOnly("flex items-center gap-1 ml-1", isClient ? "flex" : "hidden")}>
+              <PlayVoiceButton 
+                text={message.content}
+                voiceId={voiceId}
+                modelId={modelId}
+                voiceSettings={voiceSettings}
+              />
+              <VoiceSettingsPanel 
+                voiceSettings={voiceSettings}
+                onChange={setVoiceSettings}
+                onVoiceChange={setVoiceId}
+                onModelChange={setModelId}
+                defaultVoiceId={voiceId}
+                defaultModelId={modelId}
+              />
+            </div>
           )}
         </div>
         

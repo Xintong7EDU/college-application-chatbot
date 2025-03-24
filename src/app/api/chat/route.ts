@@ -201,19 +201,43 @@ function createReadableStream(response: AsyncIterable<ChatCompletionChunk>) {
   return new ReadableStream({
     async start(controller) {
       try {
+        console.log('Starting to process OpenAI stream');
+        let chunkCount = 0;
+        
         // Process each chunk from the OpenAI response
         for await (const chunk of response) {
           const text = chunk.choices[0]?.delta?.content || '';
           if (text) {
             controller.enqueue(new TextEncoder().encode(text));
+            chunkCount++;
+            
+            if (chunkCount % 10 === 0) {
+              console.log(`Processed ${chunkCount} chunks`);
+            }
           }
         }
+        
+        console.log(`Stream complete, processed ${chunkCount} total chunks`);
         controller.close();
       } catch (error) {
         console.error('Error processing stream:', error);
+        
+        // Send error message before closing
+        try {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown streaming error';
+          controller.enqueue(new TextEncoder().encode(`\n\nStreaming Error: ${errorMessage}`));
+        } catch (e) {
+          // Ignore if we can't send the error
+        }
+        
         controller.error(error);
       }
     },
+    
+    // Handle cancellation
+    cancel(reason) {
+      console.log('Stream cancelled by client:', reason);
+    }
   });
 }
 
@@ -226,7 +250,10 @@ export async function POST(req: Request) {
       const body = await req.json();
       messages = body.messages;
       useSpecialPrompt = body.useSpecialPrompt !== false; // Default to true if not specified
-    } catch {
+      
+      console.log(`Processing chat request with ${messages.length} messages, useSpecialPrompt=${useSpecialPrompt}`);
+    } catch (parseError) {
+      console.error('Error parsing request JSON:', parseError);
       // Ignore the specific error - just return a 400
       return new Response('Invalid JSON body', { status: 400 });
     }
@@ -252,6 +279,7 @@ export async function POST(req: Request) {
           ...messages,
         ],
         stream: true,
+        max_tokens: 4000,
       });
 
       // Transform the OpenAI response into a ReadableStream
@@ -263,6 +291,8 @@ export async function POST(req: Request) {
           'Content-Type': 'text/plain; charset=utf-8',
           'Cache-Control': 'no-cache, no-transform',
           'X-Content-Type-Options': 'nosniff',
+          'Transfer-Encoding': 'chunked',
+          'Connection': 'keep-alive',
         },
       });
     } catch (error) {
