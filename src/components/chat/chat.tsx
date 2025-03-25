@@ -20,7 +20,10 @@ export function Chat() {
   // Create a new session if none exists
   useEffect(() => {
     if (sessions.length === 0) {
+      console.log('No existing sessions found, creating new session with introduction message')
       createNewSession()
+    } else {
+      console.log('Existing sessions found:', sessions.length)
     }
   }, [sessions.length, createNewSession])
 

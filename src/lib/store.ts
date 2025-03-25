@@ -52,7 +52,14 @@ export const useChatStore = create<ChatStore>()(
         return {
           id: crypto.randomUUID(),
           title: 'New Conversation',
-          messages: [],
+          messages: [
+            {
+              id: crypto.randomUUID(),
+              content: "Hi there! I'm your college application assistant. I can help you craft compelling personal statements, suggest extracurricular activities to highlight, provide guidance on choosing schools, and offer tips for interviews. What would you like help with today?",
+              role: 'assistant',
+              createdAt: timestamp
+            }
+          ],
           createdAt: timestamp,
           updatedAt: timestamp,
         }
@@ -68,6 +75,7 @@ export const useChatStore = create<ChatStore>()(
 
         createNewSession: () => {
           const newSession = createEmptySession()
+          console.log('New chat session created with introduction message', { sessionId: newSession.id })
           set((state) => ({
             sessions: [...state.sessions, newSession],
             currentSessionId: newSession.id,

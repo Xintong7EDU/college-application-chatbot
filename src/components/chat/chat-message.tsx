@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { Message } from '@/lib/types'
 import { MarkdownRenderer } from './markdown-renderer'
 import { formatDate, getMessageRole, clientOnly } from '@/lib/utils'
@@ -18,6 +18,11 @@ const defaultVoiceSettings: VoiceSettings = {
   speed: 1.0,
   use_speaker_boost: true
 };
+
+// Simple placeholder for markdown content while loading
+const MarkdownPlaceholder = ({ content }: { content: string }) => (
+  <p className="whitespace-pre-wrap break-words opacity-70">{content}</p>
+);
 
 interface ChatMessageProps {
   message: Message
@@ -41,38 +46,34 @@ export function ChatMessage({ message }: ChatMessageProps) {
     console.log('ChatMessage client-side hydration complete', message.id)
   }, [createdAt, message.id])
 
-  // The main container div className must be the same on both server and client
-  // to avoid hydration mismatch
-  const containerClassName = cn(
-    'flex w-full items-start gap-4 py-4',
-    isAssistant ? 'justify-start' : 'justify-end'
-  )
+  // IMPORTANT: The container className must be consistent between server and client
+  // We must use a fixed string, not dynamic values that would change after hydration
+  const containerClassName = "flex w-full items-start gap-4 py-4 " + 
+    (isAssistant ? "justify-start" : "justify-end")
 
-  const messageContainerClassName = cn(
-    'flex flex-col gap-2',
-    isAssistant ? 'items-start' : 'items-end',
-    'max-w-3xl'
-  )
+  const messageContainerClassName = "flex flex-col gap-2 " + 
+    (isAssistant ? "items-start" : "items-end") + 
+    " max-w-3xl"
 
   return (
     <div className={containerClassName}>
       <div className={messageContainerClassName}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{getMessageRole(message.role)}</span>
-          {/* Use clientOnly to handle conditional content safely */}
-          <span className={clientOnly("", isClient ? "inline" : "hidden")}>•</span>
+          {/* Always render bullet point with consistent visibility */}
+          <span className={isClient ? "inline" : "invisible"}>•</span>
           <time 
             dateTime={createdAt instanceof Date && !isNaN(createdAt.getTime()) 
               ? createdAt.toISOString() 
               : new Date().toISOString()}
-            className={clientOnly("", isClient ? "inline" : "hidden")}
+            className={isClient ? "inline" : "invisible"}
           >
             {formattedDate}
           </time>
           
-          {/* Voice controls only for assistant messages */}
+          {/* Voice controls only for assistant messages - always render but toggle visibility */}
           {isAssistant && (
-            <div className={clientOnly("flex items-center gap-1 ml-1", isClient ? "flex" : "hidden")}>
+            <div className={isClient ? "flex items-center gap-1 ml-1" : "hidden"}>
               <PlayVoiceButton 
                 text={message.content}
                 voiceId={voiceId}
@@ -91,14 +92,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
           )}
         </div>
         
-        <Card className={cn(
-          'px-4 py-3 shadow-sm',
+        <Card className={
           isAssistant 
-            ? 'bg-card text-card-foreground' 
-            : 'bg-primary text-primary-foreground'
-        )}>
+            ? 'bg-card text-card-foreground px-4 py-3 shadow-sm' 
+            : 'bg-primary text-primary-foreground px-4 py-3 shadow-sm'
+        }>
           {isAssistant ? (
-            <MarkdownRenderer content={message.content} />
+            isClient ? (
+              <MarkdownRenderer content={message.content} />
+            ) : (
+              <MarkdownPlaceholder content={message.content} />
+            )
           ) : (
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
           )}

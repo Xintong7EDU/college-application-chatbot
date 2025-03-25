@@ -8,30 +8,55 @@ import { Loader2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn, clientOnly } from '@/lib/utils'
 
+// This component only renders messages when on the client side
 export function ChatList() {
   const { getCurrentMessages, isGenerating } = useChatStore()
-  const messages = getCurrentMessages().sort((a, b) => {
-    const dateA = new Date(a.createdAt).getTime();
-    const dateB = new Date(b.createdAt).getTime();
-    
-    // Handle invalid dates (NaN) by placing them at the end
-    if (isNaN(dateA)) return 1;
-    if (isNaN(dateB)) return -1;
-    
-    return dateA - dateB;
-  });
+  const [messages, setMessages] = useState<Message[]>([])
   const endOfMessagesRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const prevGeneratingRef = useRef(isGenerating)
-  const prevMessagesLengthRef = useRef(messages.length)
+  const prevMessagesLengthRef = useRef(0)
   const [isClient, setIsClient] = useState(false)
   
-  // Set isClient to true after component mounts
+  // Set isClient to true and populate messages only after component mounts on client
   useEffect(() => {
     setIsClient(true)
-    console.log('ChatList client-side hydration complete', messages.length)
-  }, [messages.length])
+    
+    // Get and sort messages
+    const currentMessages = getCurrentMessages().sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      
+      // Handle invalid dates (NaN) by placing them at the end
+      if (isNaN(dateA)) return 1;
+      if (isNaN(dateB)) return -1;
+      
+      return dateA - dateB;
+    });
+    
+    setMessages(currentMessages)
+    prevMessagesLengthRef.current = currentMessages.length
+    console.log('ChatList client-side hydration complete', currentMessages.length)
+  }, [getCurrentMessages])
+
+  // Update messages when they change
+  useEffect(() => {
+    if (!isClient) return;
+    
+    const currentMessages = getCurrentMessages().sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      
+      // Handle invalid dates
+      if (isNaN(dateA)) return 1;
+      if (isNaN(dateB)) return -1;
+      
+      return dateA - dateB;
+    });
+
+    setMessages(currentMessages);
+  }, [getCurrentMessages, isClient]);
 
   // Only scroll to bottom when generation completes (transitions from true to false)
   useEffect(() => {
@@ -96,51 +121,63 @@ export function ChatList() {
     }
   }
 
-  // Use CSS to handle showing/hiding elements instead of conditional rendering
-  return (
-    <div className="flex-1 overflow-y-auto p-4 relative flex flex-col" ref={containerRef}>
-      {/* Welcome section - hidden by default, shown when client-side and no messages */}
-      <div className={clientOnly(
-        "flex flex-col items-center justify-center min-h-[80vh] text-center",
-        isClient && messages.length === 0 ? "flex" : "hidden"
-      )}>
-        <h2 className="text-2xl font-bold mb-2">Welcome to GPT-4o Chat</h2>
-        <p className="text-muted-foreground mb-8 max-w-md">
-          Start a conversation with GPT-4o, one of OpenAI&apos;s most advanced language models.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-          {examplePrompts.map((prompt, index) => (
-            <div 
-              key={index}
-              className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
-              onClick={() => {
-                // TODO: Implement clicking on example prompts
-              }}
-            >
-              <p className="text-sm">{prompt}</p>
-            </div>
-          ))}
+  // Server-side placeholder - won't trigger hydration mismatch since content
+  // will be completely replaced on client-side
+  if (!isClient) {
+    return (
+      <div className="flex-1 overflow-y-auto p-4 relative flex flex-col">
+        <div className="flex flex-col items-center justify-center min-h-[80vh] text-center">
+          <h2 className="text-2xl font-bold mb-2">College Application Assistant</h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            Loading chatbot...
+          </p>
         </div>
       </div>
+    )
+  }
+
+  // Client-side rendering only
+  return (
+    <div className="flex-1 overflow-y-auto p-4 relative flex flex-col" ref={containerRef}>
+      {/* Welcome section - only shown when there are no messages */}
+      {messages.length === 0 && (
+        <div className="flex flex-col items-center justify-center min-h-[80vh] text-center">
+          <h2 className="text-2xl font-bold mb-2">College Application Assistant</h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            Get personalized help with your college applications, essays, and more from our AI assistant.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+            {examplePrompts.map((prompt, index) => (
+              <div 
+                key={index}
+                className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
+                onClick={() => {
+                  // TODO: Implement clicking on example prompts
+                }}
+              >
+                <p className="text-sm">{prompt}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Message list - visible when there are messages */}
-      <div className={clientOnly(
-        "flex-1",
-        isClient && messages.length === 0 ? "hidden" : "block"
-      )}>
-        {messages.map((message: Message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
-      </div>
+      {messages.length > 0 && (
+        <div className="flex-1 block">
+          {messages.map((message: Message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+        </div>
+      )}
         
-      {/* Typing indicator - hidden by default, shown when generating */}
-      <div className={clientOnly(
-        "flex items-center justify-start p-4",
-        isGenerating ? "block" : "hidden"
-      )}>
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        <span className="text-sm text-muted-foreground">GPT-4o is thinking...</span>
-      </div>
+      {/* Typing indicator */}
+      {isGenerating && (
+        <div className="flex items-center justify-start p-4">
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          <span className="text-sm text-muted-foreground">GPT-4o is thinking...</span>
+        </div>
+      )}
       
       {/* Scroll anchor */}
       <div ref={endOfMessagesRef} />
@@ -149,10 +186,9 @@ export function ChatList() {
       <Button
         variant="outline"
         size="icon"
-        className={clientOnly(
-          "fixed bottom-24 right-8 rounded-full shadow-md hover:shadow-lg transition-all",
+        className={`fixed bottom-24 right-8 rounded-full shadow-md hover:shadow-lg transition-all ${
           showScrollButton ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
+        }`}
         onClick={scrollToBottom}
         aria-label="Scroll to bottom"
       >

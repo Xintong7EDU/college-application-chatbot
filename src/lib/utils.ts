@@ -11,23 +11,23 @@ export function formatDate(date: Date | string) {
     // Handle both Date objects and string dates
     const dateObj = date instanceof Date ? date : new Date(date)
     
-    // Add detailed logging for debugging
-    if (typeof date === 'string') {
-      console.log(`formatDate: converting string date to Date object: "${date}"`)
-    }
-    
     // Check if date is valid before formatting
     if (isNaN(dateObj.getTime())) {
       console.warn('Invalid date provided to formatDate:', date)
       return 'Just now'
     }
     
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-    }).format(dateObj)
+    // Use a consistent format that doesn't depend on locale settings
+    // This avoids hydration mismatches between server and client locale
+    const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dateObj.getMonth()]
+    const day = dateObj.getDate()
+    let hours = dateObj.getHours()
+    const minutes = dateObj.getMinutes().toString().padStart(2, '0')
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    hours = hours % 12
+    hours = hours ? hours : 12 // the hour '0' should be '12'
+    
+    return `${month} ${day}, ${hours}:${minutes} ${ampm}`
   } catch (error) {
     console.error('Error formatting date:', error)
     return 'Just now'
